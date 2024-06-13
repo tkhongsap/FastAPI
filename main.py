@@ -38,15 +38,15 @@ class LeadSchema(BaseModel):
 
 
 def send_email(subject, message, to_address):
-    # Your send_email logic, unchanged from before
-    from_address = 'ryan@smartbids.ai'
+    from_address = 'ta.khongsap@live.com'
     password = os.getenv("EMAIL_PASS")
     msg = MIMEMultipart()
-    msg['From'] = "SmartBids.ai - Email verification <" + from_address + ">"
+    msg['From'] = "IntelligenceAgent.ai - Email verification <" + from_address + ">"
     msg['To'] = to_address
     msg['Subject'] = subject
     msg.attach(MIMEText(message, 'html'))
-    server = smtplib.SMTP_SSL('mail.privateemail.com', 465)
+    server = smtplib.SMTP('smtp.office365.com', 587)
+    server.starttls()
     server.login(from_address, password)
     text = msg.as_string()
     server.sendmail(from_address, to_address, text)
