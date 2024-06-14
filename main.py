@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Response, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from urllib.parse import quote
@@ -18,7 +18,7 @@ app = FastAPI()
 # MongoDB setup
 mongo_uri = os.environ['MONGO_AUTH']
 client = MongoClient(mongo_uri)
-db = client['smartbids']
+db = client['IntelligenceHub']
 users_collection = db['users']
 leads_collection = db['leads']
 
@@ -40,6 +40,9 @@ class LeadSchema(BaseModel):
 def send_email(subject, message, to_address):
     from_address = 'ta.khongsap@live.com'
     password = os.getenv("EMAIL_PASS")
+    if not password:
+        raise ValueError("The EMAIL_PASS environment variable is not set")
+
     msg = MIMEMultipart()
     msg['From'] = "IntelligenceAgent.ai - Email verification <" + from_address + ">"
     msg['To'] = to_address
@@ -51,7 +54,6 @@ def send_email(subject, message, to_address):
     text = msg.as_string()
     server.sendmail(from_address, to_address, text)
     server.quit()
-
 
 @app.post("/create_lead")
 async def create_lead(lead: LeadSchema):
@@ -83,7 +85,7 @@ async def create_lead(lead: LeadSchema):
         })
 
     # [Rest of your email generation and sending logic]
-    msg = f'<p>Welcome to SmartBids.ai, {lead.name}!</p><p>Please click on the following link to verify your email:</p><a href="{email_base_url}/verify_client?token={token}&email={quote(lead.email)}&phone={quote(lead.phone)}&db_type=leads">Verify Email</a><p>Thank you,</p><p>SmartBids.ai Team</p>'
+    msg = f'<p>Welcome to IntelligenceHub.ai, {lead.name}!</p><p>Please click on the following link to verify your email:</p><a href="{email_base_url}/verify_client?token={token}&email={quote(lead.email)}&phone={quote(lead.phone)}&db_type=leads">Verify Email</a><p>Thank you,</p><p>IntelligenceHub.ai Team</p>'
     subject = 'Email verification'
     send_email(subject, msg, lead.email)
 
@@ -116,7 +118,7 @@ async def send_verification(email: EmailSchema):
         })
 
     # [Rest of your email generation and sending logic]
-    msg = f'<p>Welcome to SmartBids.ai!</p><p>Please click on the following link to verify your email:</p><a href="{email_base_url}/verify_client?token={token}&email={quote(email.email)}&db_type=users">Verify Email</a><p>Thank you,</p><p>SmartBids.ai Team</p>'
+    msg = f'<p>Welcome to IntelligenceHub.ai!</p><p>Please click on the following link to verify your email:</p><a href="{email_base_url}/verify_client?token={token}&email={quote(email.email)}&db_type=users">Verify Email</a><p>Thank you,</p><p>IntelligenceHub.ai Team</p>'
     subject = 'Email verification'
     send_email(subject, msg, email.email)
 
@@ -147,4 +149,3 @@ async def verify_client(token: str, email: str, phone: Optional[str] = None, db_
             """
 
     raise HTTPException(status_code=400, detail="Invalid token or email")
-
