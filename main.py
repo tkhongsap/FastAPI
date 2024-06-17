@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Response, status
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from urllib.parse import quote
@@ -11,7 +11,7 @@ import os
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
-load_dotenv(".env")
+load_dotenv()
 
 app = FastAPI()
 
@@ -84,7 +84,6 @@ async def create_lead(lead: LeadSchema):
             "verified": False
         })
 
-    # [Rest of your email generation and sending logic]
     msg = f'<p>Welcome to IntelligenceHub.ai, {lead.name}!</p><p>Please click on the following link to verify your email:</p><a href="{email_base_url}/verify_client?token={token}&email={quote(lead.email)}&phone={quote(lead.phone)}&db_type=leads">Verify Email</a><p>Thank you,</p><p>IntelligenceHub.ai Team</p>'
     subject = 'Email verification'
     send_email(subject, msg, lead.email)
@@ -117,7 +116,6 @@ async def send_verification(email: EmailSchema):
             "verified": False
         })
 
-    # [Rest of your email generation and sending logic]
     msg = f'<p>Welcome to IntelligenceHub.ai!</p><p>Please click on the following link to verify your email:</p><a href="{email_base_url}/verify_client?token={token}&email={quote(email.email)}&db_type=users">Verify Email</a><p>Thank you,</p><p>IntelligenceHub.ai Team</p>'
     subject = 'Email verification'
     send_email(subject, msg, email.email)
@@ -135,7 +133,7 @@ async def verify_client(token: str, email: str, phone: Optional[str] = None, db_
             return """
             <h1>This email has already been verified!</h1>
             <p>You are fully verified and can now login.</p>
-            <a href="https://app.smartbids.ai">Click here to login</a>
+            <a href="https://saas-production-7cf3.up.railway.app/">Click here to login</a>
             """
         else:
             collection.update_one(
@@ -145,7 +143,12 @@ async def verify_client(token: str, email: str, phone: Optional[str] = None, db_
             return """
             <h1>Your email has been successfully verified!</h1>
             <p>You are fully verified and can now login.</p>
-            <a href="https://app.smartbids.ai">Click here to login</a>
+            <a href="https://saas-production-7cf3.up.railway.app/">Click here to login</a>
             """
 
     raise HTTPException(status_code=400, detail="Invalid token or email")
+
+# Close MongoDB client connection when FastAPI shuts down
+@app.on_event("shutdown")
+def shutdown_event():
+    client.close()
