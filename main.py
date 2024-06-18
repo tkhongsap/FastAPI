@@ -1,56 +1,18 @@
-"""
-This FastAPI application serves as a backend for managing user leads and verifying email addresses.
-
-Main Functionalities:
-1. User and Lead Management:
-   - Leads: Individuals who have shown interest in a product or service.
-   - Users: Registered users of the system.
-
-2. Email Verification:
-   - When a user or lead signs up, an email verification link is sent to their email address.
-   - This helps ensure that the email address provided is valid and that the user/lead is legitimate.
-
-3. Endpoints:
-   - Create Lead (/create_lead):
-       - Accepts information about a lead (name, email, phone).
-       - Stores this information in a MongoDB database.
-       - Sends a verification email to the lead.
-   - Send Verification (/send_verification):
-       - Accepts an email address to verify.
-       - Checks if the email is already verified.
-       - If not, sends a verification email.
-   - Verify Client (/verify_client):
-       - Takes a token, email, and optionally a phone number and database type.
-       - Verifies the token and email combination in the database.
-       - If valid, marks the email as verified and allows the user/lead to log in.
-
-4. MongoDB:
-   - The application uses MongoDB to store user and lead data.
-   - It connects to MongoDB using credentials stored in environment variables.
-
-5. Email Sending:
-   - Uses the smtplib library to send emails.
-   - The email credentials are securely loaded from environment variables.
-
-6. Environment Variables:
-   - Sensitive information like database URIs and email passwords are stored in environment variables for security.
-"""
-import secrets
 import os
-import smtplib
 import logging
+import secrets
 
-from fastapi import FastAPI, HTTPException, Response, status
+from urllib.parse import quote
 from fastapi.responses import HTMLResponse
+
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from urllib.parse import quote
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from pymongo import MongoClient
-
-
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+from pprint import pprint
 
 # Set up basic configuration for logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -67,6 +29,7 @@ users_collection = db['users']
 leads_collection = db['leads']
 
 email_base_url = os.environ['EMAIL_BASE_URL']
+brevo_api_key = os.getenv("BREVO_API_KEY")
 
 class EmailSchema(BaseModel):
     email: EmailStr
@@ -79,31 +42,27 @@ class LeadSchema(BaseModel):
     id: Optional[str]
 
 def send_email(subject, message, to_address):
-    from_address = 'ta.khongsap@live.com'
-    password = os.getenv("EMAIL_PASS")
-    if not password:
-        raise ValueError("The EMAIL_PASS environment variable is not set")
+    configuration = sib_api_v3_sdk.Configuration()
+    configuration.api_key['api-key'] = brevo_api_key
+
+    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+    sender = {"name": "IntelligenceHub.ai", "email": "tkhongsap@ka-analytics.com"}
+    to = [{"email": to_address}]
+    html_content = f"<html><body><p>{message}</p></body></html>"
+
+    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        to=to,
+        sender=sender,
+        subject=subject,
+        html_content=html_content
+    )
 
     try:
-        msg = MIMEMultipart()
-        msg['From'] = "IntelligenceAgent.ai - Email verification <" + from_address + ">"
-        msg['To'] = to_address
-        msg['Subject'] = subject
-        msg.attach(MIMEText(message, 'html'))
-        
-        server = smtplib.SMTP('smtp.office365.com', 587)
-        server.starttls()
-        server.login(from_address, password)
-        text = msg.as_string()
-        server.sendmail(from_address, to_address, text)
-        server.quit()
-    except smtplib.SMTPAuthenticationError as e:
-        logging.error(f"SMTP authentication error: {e}")
-        raise HTTPException(status_code=500, detail="Email authentication failed")
-    except Exception as e:
-        logging.error(f"Failed to send email: {e}")
+        api_response = api_instance.send_transac_email(send_smtp_email)
+        pprint(api_response)
+    except ApiException as e:
+        logging.error(f"Exception when calling SMTPApi->send_transac_email: {e}")
         raise HTTPException(status_code=500, detail="Failed to send email")
-
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
@@ -210,3 +169,4 @@ async def verify_client(token: str, email: str, phone: Optional[str] = None, db_
 @app.on_event("shutdown")
 def shutdown_event():
     client.close()
+
