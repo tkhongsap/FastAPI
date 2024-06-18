@@ -1,3 +1,42 @@
+"""
+This FastAPI application serves as a backend for managing user leads and verifying email addresses.
+
+Main Functionalities:
+1. User and Lead Management:
+   - Leads: Individuals who have shown interest in a product or service.
+   - Users: Registered users of the system.
+
+2. Email Verification:
+   - When a user or lead signs up, an email verification link is sent to their email address.
+   - This helps ensure that the email address provided is valid and that the user/lead is legitimate.
+
+3. Endpoints:
+   - Create Lead (/create_lead):
+       - Accepts information about a lead (name, email, phone).
+       - Stores this information in a MongoDB database.
+       - Sends a verification email to the lead.
+   - Send Verification (/send_verification):
+       - Accepts an email address to verify.
+       - Checks if the email is already verified.
+       - If not, sends a verification email.
+   - Verify Client (/verify_client):
+       - Takes a token, email, and optionally a phone number and database type.
+       - Verifies the token and email combination in the database.
+       - If valid, marks the email as verified and allows the user/lead to log in.
+
+4. MongoDB:
+   - The application uses MongoDB to store user and lead data.
+   - It connects to MongoDB using credentials stored in environment variables.
+
+5. Email Sending:
+   - Uses the smtplib library to send emails.
+   - The email credentials are securely loaded from environment variables.
+
+6. Environment Variables:
+   - Sensitive information like database URIs and email passwords are stored in environment variables for security.
+"""
+
+
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr
@@ -24,18 +63,15 @@ leads_collection = db['leads']
 
 email_base_url = os.environ['EMAIL_BASE_URL']
 
-
 class EmailSchema(BaseModel):
     email: EmailStr
     id: Optional[str]
-
 
 class LeadSchema(BaseModel):
     name: str
     email: EmailStr
     phone: str
     id: Optional[str]
-
 
 def send_email(subject, message, to_address):
     from_address = 'ta.khongsap@live.com'
@@ -54,6 +90,16 @@ def send_email(subject, message, to_address):
     text = msg.as_string()
     server.sendmail(from_address, to_address, text)
     server.quit()
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    return """
+    <h1>Welcome to IntelligenceHub API</h1>
+    <p>Use the available endpoints to interact with the system.</p>
+    <ul>
+        <li><a href="/docs">API Documentation</a></li>
+    </ul>
+    """
 
 @app.post("/create_lead")
 async def create_lead(lead: LeadSchema):
@@ -90,7 +136,6 @@ async def create_lead(lead: LeadSchema):
 
     return {"message": "Verification email sent"}
 
-
 @app.post("/send_verification")
 async def send_verification(email: EmailSchema):
     token = secrets.token_hex(20)
@@ -121,7 +166,6 @@ async def send_verification(email: EmailSchema):
     send_email(subject, msg, email.email)
 
     return {"message": "Verification email sent"}
-
 
 @app.get("/verify_client", response_class=HTMLResponse)
 async def verify_client(token: str, email: str, phone: Optional[str] = None, db_type: str = "users"):
