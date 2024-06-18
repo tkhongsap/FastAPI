@@ -1,3 +1,33 @@
+"""
+This FastAPI application is designed to manage user and lead data for IntelligenceHub.ai. 
+It integrates with MongoDB for data storage and uses Brevo (formerly Sendinblue) for sending 
+transactional emails. The application supports the following features:
+1. Creating new leads and sending verification emails.
+2. Sending verification emails to users.
+3. Verifying email addresses through a token-based link.
+
+The endpoints provided are:
+1. GET / : A welcome page with a link to the API documentation.
+2. POST /create_lead : Creates a new lead, stores it in MongoDB, and sends a verification email.
+3. POST /send_verification : Sends a verification email to a user.
+4. GET /verify_client : Verifies a user's or lead's email based on a token.
+
+Dependencies:
+- fastapi
+- uvicorn
+- pymongo
+- python-dotenv
+- sib-api-v3-sdk
+
+Make sure to set the following environment variables:
+- MONGO_AUTH: MongoDB connection string.
+- EMAIL_BASE_URL: Base URL for email verification links.
+- BREVO_API_KEY: API key for Brevo (Sendinblue).
+
+To run the application locally, use:
+    uvicorn main:app --reload
+"""
+
 import os
 import logging
 import secrets
