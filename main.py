@@ -35,20 +35,25 @@ Main Functionalities:
 6. Environment Variables:
    - Sensitive information like database URIs and email passwords are stored in environment variables for security.
 """
-
+import secrets
+import os
+import smtplib
+import logging
 
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from urllib.parse import quote
-import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import secrets
-import os
 from dotenv import load_dotenv
 from pymongo import MongoClient
+
+
+
+# Set up basic configuration for logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 load_dotenv()
 
@@ -65,7 +70,7 @@ email_base_url = os.environ['EMAIL_BASE_URL']
 
 class EmailSchema(BaseModel):
     email: EmailStr
-    id: Optional[str]
+    id: Optional[str] = None
 
 class LeadSchema(BaseModel):
     name: str
@@ -79,17 +84,26 @@ def send_email(subject, message, to_address):
     if not password:
         raise ValueError("The EMAIL_PASS environment variable is not set")
 
-    msg = MIMEMultipart()
-    msg['From'] = "IntelligenceAgent.ai - Email verification <" + from_address + ">"
-    msg['To'] = to_address
-    msg['Subject'] = subject
-    msg.attach(MIMEText(message, 'html'))
-    server = smtplib.SMTP('smtp.office365.com', 587)
-    server.starttls()
-    server.login(from_address, password)
-    text = msg.as_string()
-    server.sendmail(from_address, to_address, text)
-    server.quit()
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = "IntelligenceAgent.ai - Email verification <" + from_address + ">"
+        msg['To'] = to_address
+        msg['Subject'] = subject
+        msg.attach(MIMEText(message, 'html'))
+        
+        server = smtplib.SMTP('smtp.office365.com', 587)
+        server.starttls()
+        server.login(from_address, password)
+        text = msg.as_string()
+        server.sendmail(from_address, to_address, text)
+        server.quit()
+    except smtplib.SMTPAuthenticationError as e:
+        logging.error(f"SMTP authentication error: {e}")
+        raise HTTPException(status_code=500, detail="Email authentication failed")
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send email")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
