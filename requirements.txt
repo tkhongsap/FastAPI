@@ -1,8 +1,8 @@
 fastapi
 uvicorn
-pydantic[dotenv]
-pydantic[email]
-pymongo
-python-dotenv
+pydantic==2.7.4
+pymongo==4.5.0
+python-dotenv==1.0.1
 python_bcrypt==0.3.2
+sib_api_v3_sdk==7.6.0
 python-multipart
